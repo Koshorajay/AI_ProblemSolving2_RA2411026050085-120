@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UCS — Uniform Cost Search</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0c0e14;
+  --surface: #13161f;
+  --border: #1e2436;
+  --accent: #4fffb0;
+  --accent2: #ff6b35;
+  --accent3: #ffcc00;
+  --muted: #3a4060;
+  --text: #c9d4f0;
+  --text-dim: #5a6890;
+  --node-default: #1a2040;
+  --node-stroke: #2e3d6e;
+  --visited: #1a3030;
+  --visited-stroke: #4fffb0;
+  --path-stroke: #4fffb0;
+  --start-fill: #1a3020;
+  --goal-fill: #2a1a10;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+html { height: 100%; }
+
+/* ─── Header ─────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 20px #4fffb066;
+}
+
+.logo span { color: var(--text); }
+
+.tagline {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-left: 1px solid var(--border);
+  padding-left: 18px;
+}
+
+.header-right {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+}
+
+/* ─── Layout ──────────────────────────────────────── */
+.app {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─── Sidebar ─────────────────────────────────────── */
+.sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 2px; }
+
+.section-title {
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ─── Input fields ────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.field label {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.field input, .field select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+.field input:focus, .field select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px #4fffb018;
+}
+
+.field input::placeholder { color: var(--text-dim); }
+
+/* ─── Buttons ─────────────────────────────────────── */
+.btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 9px 16px;
+  border-radius: 6px;
+  border: 1px solid;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.18s;
+  width: 100%;
+}
+
+.btn-add {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.btn-add:hover {
+  background: var(--accent);
+  color: var(--bg);
+  box-shadow: 0 0 16px #4fffb055;
+}
+
+.btn-run {
+  color: var(--accent3);
+  border-color: var(--accent3);
+  font-size: 0.75rem;
+}
+.btn-run:hover {
+  background: var(--accent3);
+  color: var(--bg);
+  box-shadow: 0 0 16px #ffcc0066;
+}
+
+.btn-clear {
+  color: var(--accent2);
+  border-color: var(--accent2);
+}
+.btn-clear:hover {
+  background: var(--accent2);
+  color: #fff;
+  box-shadow: 0 0 16px #ff6b3555;
+}
+
+.btn-small {
+  width: auto;
+  padding: 4px 10px;
+  font-size: 0.6rem;
+}
+
+/* ─── Edge list ───────────────────────────────────── */
+.edge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.edge-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.edge-item .edge-label { color: var(--text); }
+.edge-item .edge-cost  { color: var(--accent3); font-weight: 700; }
+.edge-item .del-btn {
+  background: none; border: none; color: var(--text-dim);
+  cursor: pointer; font-size: 0.75rem; padding: 0 4px;
+  transition: color 0.15s;
+}
+.edge-item .del-btn:hover { color: var(--accent2); }
+
+/* ─── Result panel ────────────────────────────────── */
+.result-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  min-height: 90px;
+}
+
+.result-box.success { border-color: var(--accent); }
+.result-box.failure { border-color: var(--accent2); }
+.result-box.idle    { border-color: var(--border); }
+
+.result-status {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.result-status.ok   { color: var(--accent); }
+.result-status.err  { color: var(--accent2); }
+.result-status.wait { color: var(--text-dim); }
+
+.result-path {
+  font-size: 0.82rem;
+  color: var(--text);
+  word-break: break-all;
+  line-height: 1.6;
+}
+
+.result-cost {
+  margin-top: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent3);
+}
+
+/* ─── Log ─────────────────────────────────────────── */
+.log-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  max-height: 140px;
+  overflow-y: auto;
+  font-size: 0.65rem;
+  line-height: 1.8;
+  color: var(--text-dim);
+}
+
+.log-box::-webkit-scrollbar { width: 3px; }
+.log-box::-webkit-scrollbar-thumb { background: var(--muted); }
+
+.log-line { margin-bottom: 1px; }
+.log-line.hl { color: var(--accent); }
+.log-line.pop { color: var(--accent3); }
+
+/* ─── Canvas area ─────────────────────────────────── */
+.canvas-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+canvas {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+}
+
+.canvas-hint {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 14px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ─── Mode pill ───────────────────────────────────── */
+.mode-bar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  gap: 6px;
+}
+
+.mode-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.mode-pill.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 12px #4fffb044;
+}
+
+/* ─── Legend ──────────────────────────────────────── */
+.legend {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 2px solid;
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">UCS<span>Graph</span></div>
+  <div class="tagline">Uniform Cost Search · Least-Cost Path Finder</div>
+  <div class="header-right">
+    <button class="btn btn-small btn-clear" onclick="clearAll()">Clear All</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div class="sidebar-scroll">
+
+      <!-- Add Node -->
+      <div>
+        <div class="section-title">Add Node</div>
+        <div class="field">
+          <label>Node Name</label>
+          <input id="nodeName" type="text" placeholder="e.g. A, B, C1 …" maxlength="6"/>
+        </div>
+        <button class="btn btn-add" onclick="addNodeFromInput()">+ Add Node</button>
+      </div>
+
+      <!-- Add Edge -->
+      <div>
+        <div class="section-title">Add Edge</div>
+        <div class="field">
+          <label>From Node</label>
+          <input id="edgeFrom" type="text" placeholder="e.g. A"/>
+        </div>
+        <div class="field">
+          <label>To Node</label>
+          <input id="edgeTo" type="text" placeholder="e.g. B"/>
+        </div>
+        <div class="field">
+          <label>Cost (weight)</label>
+          <input id="edgeCost" type="number" placeholder="e.g. 4" min="0"/>
+        </div>
+        <button class="btn btn-add" onclick="addEdgeFromInput()">+ Add Edge</button>
+        <div class="edge-list" id="edgeList" style="margin-top:10px;"></div>
+      </div>
+
+      <!-- Run UCS -->
+      <div>
+        <div class="section-title">Search Parameters</div>
+        <div class="field">
+          <label>Start Node</label>
+          <input id="startNode" type="text" placeholder="e.g. A"/>
+        </div>
+        <div class="field">
+          <label>Goal Node</label>
+          <input id="goalNode" type="text" placeholder="e.g. G"/>
+        </div>
+        <button class="btn btn-run" onclick="runUCS()">▶ Run UCS</button>
+      </div>
+
+      <!-- Result -->
+      <div>
+        <div class="section-title">Result</div>
+        <div class="result-box idle" id="resultBox">
+          <div class="result-status wait" id="resultStatus">Awaiting search…</div>
+          <div class="result-path" id="resultPath">—</div>
+          <div class="result-cost" id="resultCost"></div>
+        </div>
+      </div>
+
+      <!-- UCS Log -->
+      <div>
+        <div class="section-title">UCS Trace Log</div>
+        <div class="log-box" id="logBox">
+          <div class="log-line">[ Ready — build your graph and run UCS ]</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Canvas ── -->
+  <div class="canvas-area">
+    <canvas id="graphCanvas"></canvas>
+
+    <!-- legend -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="border-color:#4fffb0;background:#1a3020;"></div>
+        Start Node
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="border-color:#ff6b35;background:#2a1a10;"></div>
+        Goal Node
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="border-color:#ffcc00;background:#2a2010;"></div>
+        Optimal Path
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="border-color:#2e3d6e;background:#1a2040;"></div>
+        Unvisited
+      </div>
+    </div>
+
+    <!-- mode pills -->
+    <div class="mode-bar">
+      <div class="mode-pill active" id="pill-drag" onclick="setMode('drag')">Drag</div>
+      <div class="mode-pill" id="pill-connect" onclick="setMode('connect')">Connect</div>
+    </div>
+
+    <div class="canvas-hint" id="canvasHint">Click on canvas to place nodes · Drag to reposition · Use sidebar to add edges</div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+const nodes = {};   // name → {x, y}
+const edges = [];   // {from, to, cost}
+
+let pathNodes   = new Set();
+let pathEdges   = new Set();  // "from-to" strings
+let visitedNodes = new Set();
+
+let mode = 'drag';  // 'drag' | 'connect'
+let connectFrom = null;
+let dragging = null, dragOffX = 0, dragOffY = 0;
+
+const canvas = document.getElementById('graphCanvas');
+const ctx    = canvas.getContext('2d');
+
+// ── Resize ─────────────────────────────────────────────────────────────
+function resize() {
+  canvas.width  = canvas.parentElement.clientWidth;
+  canvas.height = canvas.parentElement.clientHeight;
+  draw();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── Mode ───────────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  connectFrom = null;
+  document.getElementById('pill-drag').classList.toggle('active', m==='drag');
+  document.getElementById('pill-connect').classList.toggle('active', m==='connect');
+  document.getElementById('canvasHint').textContent =
+    m === 'drag'
+      ? 'Click canvas to place nodes · Drag to reposition'
+      : 'Click a node to start connection · Click another to finish';
+  draw();
+}
+
+// ── Node helpers ───────────────────────────────────────────────────────
+const NODE_R = 26;
+
+function nodeAt(x, y) {
+  for (const [name, n] of Object.entries(nodes)) {
+    if ((x-n.x)**2 + (y-n.y)**2 <= NODE_R**2) return name;
+  }
+  return null;
+}
+
+// ── Canvas events ─────────────────────────────────────────────────────
+canvas.addEventListener('mousedown', e => {
+  const {x, y} = pos(e);
+  const hit = nodeAt(x, y);
+
+  if (mode === 'connect') {
+    if (!hit) return;
+    if (!connectFrom) {
+      connectFrom = hit;
+    } else if (connectFrom !== hit) {
+      // prompt cost
+      const c = parseFloat(prompt(`Cost for edge ${connectFrom} → ${hit}?`, '1'));
+      if (!isNaN(c) && c >= 0) {
+        addEdge(connectFrom, hit, c);
+      }
+      connectFrom = null;
+    } else {
+      connectFrom = null;
+    }
+    draw();
+    return;
+  }
+
+  // drag mode
+  if (hit) {
+    dragging = hit;
+    dragOffX = x - nodes[hit].x;
+    dragOffY = y - nodes[hit].y;
+  } else {
+    // place new node if canvas clicked in open area
+    // handled by click event
+  }
+});
+
+canvas.addEventListener('click', e => {
+  if (mode !== 'drag') return;
+  if (dragging) return; // was a drag op
+  const {x, y} = pos(e);
+  if (!nodeAt(x, y)) {
+    const name = prompt('Node name?', nextNodeName());
+    if (name && name.trim()) addNode(name.trim().toUpperCase(), x, y);
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const {x, y} = pos(e);
+  nodes[dragging].x = x - dragOffX;
+  nodes[dragging].y = y - dragOffY;
+  draw();
+});
+
+canvas.addEventListener('mouseup', () => { dragging = null; });
+canvas.addEventListener('mouseleave', () => { dragging = null; });
+
+function pos(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+let _nameIdx = 0;
+function nextNodeName() {
+  const names = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  return names[_nameIdx++ % 26] || `N${_nameIdx}`;
+}
+
+// ── Add node / edge ────────────────────────────────────────────────────
+function addNode(name, x, y) {
+  if (nodes[name]) { alert(`Node "${name}" already exists.`); return; }
+  const cx = canvas.width  / 2;
+  const cy = canvas.height / 2;
+  const angle = Math.random() * Math.PI * 2;
+  const r = 80 + Math.random() * Math.min(canvas.width, canvas.height) * 0.28;
+  nodes[name] = {
+    x: x !== undefined ? x : cx + Math.cos(angle) * r,
+    y: y !== undefined ? y : cy + Math.sin(angle) * r,
+  };
+  draw();
+  updateSelects();
+}
+
+function addEdge(from, to, cost) {
+  if (!nodes[from]) { alert(`Node "${from}" doesn't exist.`); return; }
+  if (!nodes[to])   { alert(`Node "${to}" doesn't exist.`);   return; }
+  // check duplicate
+  const dup = edges.find(e =>
+    (e.from===from&&e.to===to) || (e.from===to&&e.to===from));
+  if (dup) { alert(`Edge ${from}↔${to} already exists.`); return; }
+  edges.push({from, to, cost});
+  renderEdgeList();
+  draw();
+}
+
+function addNodeFromInput() {
+  const n = document.getElementById('nodeName').value.trim().toUpperCase();
+  if (!n) { alert('Enter a node name.'); return; }
+  addNode(n);
+  document.getElementById('nodeName').value = '';
+}
+
+function addEdgeFromInput() {
+  const from = document.getElementById('edgeFrom').value.trim().toUpperCase();
+  const to   = document.getElementById('edgeTo').value.trim().toUpperCase();
+  const cost = parseFloat(document.getElementById('edgeCost').value);
+  if (!from||!to) { alert('Enter from and to nodes.'); return; }
+  if (isNaN(cost)||cost<0) { alert('Enter a valid cost ≥ 0.'); return; }
+  addEdge(from, to, cost);
+  document.getElementById('edgeFrom').value = '';
+  document.getElementById('edgeTo').value   = '';
+  document.getElementById('edgeCost').value = '';
+}
+
+function renderEdgeList() {
+  const el = document.getElementById('edgeList');
+  el.innerHTML = '';
+  edges.forEach((e, i) => {
+    const div = document.createElement('div');
+    div.className = 'edge-item';
+    div.innerHTML = `
+      <span class="edge-label">${e.from} ↔ ${e.to}</span>
+      <span class="edge-cost">cost: ${e.cost}</span>
+      <button class="del-btn" onclick="removeEdge(${i})">✕</button>
+    `;
+    el.appendChild(div);
+  });
+}
+
+function removeEdge(i) {
+  edges.splice(i, 1);
+  renderEdgeList();
+  draw();
+}
+
+function updateSelects() {}
+
+function clearAll() {
+  Object.keys(nodes).forEach(k => delete nodes[k]);
+  edges.length = 0;
+  pathNodes.clear(); pathEdges.clear(); visitedNodes.clear();
+  renderEdgeList();
+  setResult('idle','Awaiting search…','—','');
+  clearLog();
+  addLog('[ Graph cleared ]');
+  draw();
+}
+
+// ── UCS ────────────────────────────────────────────────────────────────
+function runUCS() {
+  const start = document.getElementById('startNode').value.trim().toUpperCase();
+  const goal  = document.getElementById('goalNode').value.trim().toUpperCase();
+
+  pathNodes.clear(); pathEdges.clear(); visitedNodes.clear();
+
+  if (!nodes[start]) { setResult('failure','Error','Start node not found',''); draw(); return; }
+  if (!nodes[goal])  { setResult('failure','Error','Goal node not found','');  draw(); return; }
+
+  clearLog();
+  addLog(`Starting UCS: ${start} → ${goal}`);
+  addLog('─'.repeat(36));
+
+  // Build adjacency list (undirected)
+  const adj = {};
+  Object.keys(nodes).forEach(n => { adj[n] = []; });
+  edges.forEach(e => {
+    adj[e.from].push({node: e.to,   cost: e.cost});
+    adj[e.to].push({node: e.from, cost: e.cost});
+  });
+
+  // Priority queue (min-heap via sorted array for simplicity)
+  // Entry: {cost, node, path}
+  const frontier = [{cost: 0, node: start, path: [start]}];
+  const explored = new Set();
+  let stepLog = [];
+
+  while (frontier.length > 0) {
+    // sort ascending by cost
+    frontier.sort((a,b) => a.cost - b.cost);
+    const {cost, node, path} = frontier.shift();
+
+    addLog(`Pop: ${node}  [cumulative cost = ${cost}]`, 'pop');
+
+    if (explored.has(node)) {
+      addLog(`  → ${node} already explored, skip`);
+      continue;
+    }
+    explored.add(node);
+    visitedNodes.add(node);
+
+    if (node === goal) {
+      // ── Found! ──────────────────────────────────────
+      addLog('─'.repeat(36));
+      addLog(`✓ Goal reached: ${goal}`, 'hl');
+      addLog(`  Path: ${path.join(' → ')}`, 'hl');
+      addLog(`  Total cost: ${cost}`, 'hl');
+
+      path.forEach(n => pathNodes.add(n));
+      for (let i = 0; i < path.length-1; i++) {
+        pathEdges.add(`${path[i]}-${path[i+1]}`);
+        pathEdges.add(`${path[i+1]}-${path[i]}`);
+      }
+
+      setResult(
+        'success',
+        '✓ Optimal Path Found',
+        path.join(' → '),
+        `Total Cost: ${cost}`
+      );
+      draw();
+      return;
+    }
+
+    // Expand neighbors
+    (adj[node]||[]).forEach(({node: nb, cost: ec}) => {
+      if (!explored.has(nb)) {
+        addLog(`  Enqueue: ${nb}  [cost ${cost} + ${ec} = ${cost+ec}]`);
+        frontier.push({cost: cost+ec, node: nb, path: [...path, nb]});
+      }
+    });
+  }
+
+  addLog('─'.repeat(36));
+  addLog('✗ No path found between the given nodes.');
+  setResult('failure','✗ No Path Found',`No path from ${start} to ${goal}`,'');
+  draw();
+}
+
+// ── Log helpers ────────────────────────────────────────────────────────
+function clearLog() {
+  document.getElementById('logBox').innerHTML = '';
+}
+function addLog(msg, cls='') {
+  const box = document.getElementById('logBox');
+  const div = document.createElement('div');
+  div.className = 'log-line' + (cls ? ` ${cls}` : '');
+  div.textContent = msg;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setResult(type, status, path, cost) {
+  const box  = document.getElementById('resultBox');
+  const stat = document.getElementById('resultStatus');
+  const p    = document.getElementById('resultPath');
+  const c    = document.getElementById('resultCost');
+  box.className  = `result-box ${type==='success'?'success':type==='failure'?'failure':'idle'}`;
+  stat.className = `result-status ${type==='success'?'ok':type==='failure'?'err':'wait'}`;
+  stat.textContent = status;
+  p.textContent    = path;
+  c.textContent    = cost;
+}
+
+// ── Draw ───────────────────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const start = document.getElementById('startNode').value.trim().toUpperCase();
+  const goal  = document.getElementById('goalNode').value.trim().toUpperCase();
+
+  // ── Draw edges ─────────────────────────────────────
+  edges.forEach(e => {
+    const a = nodes[e.from], b = nodes[e.to];
+    if (!a||!b) return;
+    const isPath = pathEdges.has(`${e.from}-${e.to}`);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+
+    if (isPath) {
+      ctx.strokeStyle = '#ffcc00';
+      ctx.lineWidth   = 3.5;
+      ctx.shadowColor = '#ffcc00';
+      ctx.shadowBlur  = 12;
+    } else {
+      ctx.strokeStyle = '#2e3d6e';
+      ctx.lineWidth   = 1.8;
+      ctx.shadowBlur  = 0;
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // Cost label
+    const mx = (a.x + b.x)/2;
+    const my = (a.y + b.y)/2;
+    // small pill behind cost
+    ctx.save();
+    const label = String(e.cost);
+    ctx.font = '600 11px JetBrains Mono, monospace';
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = isPath ? '#2a2010' : '#0f1220';
+    roundRect(ctx, mx - tw/2 - 6, my - 10, tw + 12, 19, 4);
+    ctx.fill();
+    ctx.fillStyle = isPath ? '#ffcc00' : '#5a6890';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, mx, my);
+    ctx.restore();
+
+    // Arrow direction hint
+    drawArrow(ctx, a, b, isPath);
+  });
+
+  // connect mode preview
+  if (connectFrom && nodes[connectFrom]) {
+    // draw a faint line from that node to cursor... not easy without tracking mouse globally; skip
+  }
+
+  // ── Draw nodes ─────────────────────────────────────
+  Object.entries(nodes).forEach(([name, n]) => {
+    const isStart = name === start;
+    const isGoal  = name === goal;
+    const isPath  = pathNodes.has(name);
+    const isConn  = connectFrom === name;
+
+    ctx.save();
+
+    // Glow for path nodes
+    if (isPath) {
+      ctx.shadowColor = isStart ? '#4fffb0' : isGoal ? '#ff6b35' : '#ffcc00';
+      ctx.shadowBlur  = 22;
+    }
+
+    // Fill
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, NODE_R, 0, Math.PI*2);
+    if (isStart)      ctx.fillStyle = '#1a3020';
+    else if (isGoal)  ctx.fillStyle = '#2a1a10';
+    else if (isPath)  ctx.fillStyle = '#2a2010';
+    else              ctx.fillStyle = '#1a2040';
+    ctx.fill();
+
+    // Stroke
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, NODE_R, 0, Math.PI*2);
+    ctx.lineWidth = isPath ? 2.5 : 1.5;
+    if (isStart)     ctx.strokeStyle = '#4fffb0';
+    else if (isGoal) ctx.strokeStyle = '#ff6b35';
+    else if (isPath) ctx.strokeStyle = '#ffcc00';
+    else if (isConn) ctx.strokeStyle = '#4fffb0';
+    else             ctx.strokeStyle = '#2e3d6e';
+    ctx.stroke();
+
+    // Label
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#c9d4f0';
+    ctx.font = `700 ${name.length > 2 ? '11' : '13'}px Syne, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, n.x, n.y);
+
+    // Tag
+    if (isStart || isGoal) {
+      ctx.font = '500 9px JetBrains Mono, monospace';
+      ctx.fillStyle = isStart ? '#4fffb0' : '#ff6b35';
+      ctx.fillText(isStart?'START':'GOAL', n.x, n.y + NODE_R + 11);
+    }
+
+    ctx.restore();
+  });
+}
+
+function drawArrow(ctx, a, b, isPath) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.sqrt(dx*dx+dy*dy);
+  if (len < 1) return;
+  const ux = dx/len, uy = dy/len;
+  const mx = a.x + dx*0.62, my = a.y + dy*0.62;
+  const al = 8, aw = 4;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(mx + ux*al - uy*aw, my + uy*al + ux*aw);
+  ctx.lineTo(mx + ux*(al+al), my + uy*(al+al));
+  ctx.lineTo(mx + ux*al + uy*aw, my + uy*al - ux*aw);
+  ctx.strokeStyle = isPath ? '#ffcc0088' : '#2e3d6e88';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+// ── Load sample graph ──────────────────────────────────────────────────
+function loadSample() {
+  clearAll();
+  const W = canvas.width, H = canvas.height;
+  const cx = W/2, cy = H/2;
+  const pts = {
+    A: [cx-220, cy-80],
+    B: [cx-80,  cy-160],
+    C: [cx+80,  cy-120],
+    D: [cx-120, cy+80],
+    E: [cx+60,  cy+60],
+    G: [cx+220, cy-20],
+  };
+  Object.entries(pts).forEach(([k,[x,y]]) => addNode(k, x, y));
+  [[' A','B',4],['A','D',2],['B','C',5],['B','E',10],
+   ['C','G',3],['D','E',8],['E','G',2],['D','B',1]].forEach(([f,t,c])=>{
+    addEdge(f.trim(),t,c);
+  });
+  document.getElementById('startNode').value = 'A';
+  document.getElementById('goalNode').value  = 'G';
+  addLog('Sample graph loaded. Click ▶ Run UCS to search.', 'hl');
+}
+
+// load sample after paint
+setTimeout(loadSample, 200);
+</script>
+</body>
+</html>
